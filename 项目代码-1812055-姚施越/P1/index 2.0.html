@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>安全道路</title>
+  <h3>下面将进行文件读入工作</h3>
+    <input type="file" name="csvfile" />
+    <input type="button" onclick="csv()" value="读入文件"/>
+    <br /><br /><br />
+    <div id="resTbl"></div>
+  <style>
+      .button1 {
+            -webkit-transition-duration: 0.4s;
+            transition-duration: 0.4s;
+            padding: 2px 4px;
+            text-align: center;
+            background-color: white;
+            font-size: 24px;
+            color: black;
+            border: 2px solid #4CAF50;
+            border-radius:5px;
+        }
+        .button1:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+  </style>
+</head>
+<script src="MyGraphMat.js"></script>
+<script src="./lib/jquery.js"></script>
+<script src="./lib/papaparse.js"></script>
+<script src="./lib/jschardet.js"></script>
+<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="csv2arr.js"></script>
+
+    <script type="text/javascript">
+            function csv(){
+                //文件读入,转换工作
+                $("input[name=csvfile]").csv2arr(function(arr){
+                    // console.log( arr );
+                    var myarr = arr;
+                    // console.log("myarr");
+                    // console.log(myarr);
+
+                    // 利用localStorage存在浏览器
+                    
+                    var storage = window.localStorage;
+                    myarrString = JSON.stringify(myarr);
+                    storage.setItem("myarr", myarrString);
+
+
+
+                    var tblStr = "<table border='1'>";
+                    $.each( arr, function(i, line){
+                        tblStr += "<tr>";
+                        $.each( line, function(i, cell){
+                            tblStr += "<td>"+cell+"</td>";
+                        });
+                        tblStr += "</tr>";
+                    });
+                    $("#resTbl").html( tblStr );
+                });
+                
+            }
+            // 利用localStorage读取存在浏览器的数据
+            var storage = window.localStorage;
+            var json = storage["myarr"];
+            // storage.clear();
+            myarr = JSON.parse(json);
+            console.log("11myarr");
+            console.log(myarr);
+            console.log(typeof myarr)
+        
+            var nodes =[]
+
+            for (var i = 1; i <= myarr[0][0]; i++){
+                // 建立nodes即数字1-myarr[0][0]
+                nodes.push({
+                    // name: "\""+i+"\"", 
+                    name: i, 
+                    // name: i, 
+                    // value: i
+                });
+                // 加入graph中的顶点集内
+            }
+
+            console.log("nodes在html中")
+            console.log(nodes)
+
+            var links = []
+        
+            for (var i = 1; i < myarr.length; i++){
+        
+                if (myarr[i][2] > 0){
+                    links.push({
+                        source : myarr[i][0],
+                        target : myarr[i][1],
+                        // value: myarr[i][2]
+                        // source: "\""+myarr[i][0]+"\"",
+                        // target: "\""+myarr[i][1]+"\"",
+                        // value: "\""+myarr[i][2]+"\""
+                    });
+                }
+            }
+
+            console.log("links在html中")
+            console.log(links)
+
+            //初始化图
+            var graph = new GraphMat(myarr[0][0])
+        
+        function myfindPaths(myarr){
+            //寻找所有路径
+            for (var i = 1; i < myarr.length; i++){
+                // 第0行为顶点数和边数，从第1行开始
+                // 接下来进行加边操作以及找路径操作
+                var len = myarr[i].length
+                var a = myarr[i][0]
+                var b = myarr[i][1]
+                var c = myarr[i][2]
+                if (c > 0){
+                    graph.addEdge(a, b, c)
+                }
+                else{
+                    if(a == -1 & b == -1){
+                        console.log("询问结束！")
+                    }
+                    else if (a > 0 & b > 0){
+                        console.log("开始询问！")
+                        console.log("from"+a+"to"+b)
+                        // var mypath1 = new Array()
+                        mypath1 = graph.findAllPaths(a,b)//寻找两点之间所有路径
+                        if (mypath1 === null){
+                            return
+                        }
+                        else{
+                            console.log("下为所有路径:")
+                            console.log(mypath1)
+                            mylinjiejuzhen = graph.showGraph()
+                            mypathweight = graph.findMinPath(mypath1,mylinjiejuzhen)//寻找安全道路
+                        }
+                    }
+                }
+            }
+        }
+
+
+        
+        function myshowGraph(myarr){
+            //显示邻接矩阵
+            for (var i = 1; i < myarr.length; i++){
+                // 第0行为顶点数和边数，从第1行开始
+                // 接下来进行加边操作以及找路径操作
+                var len = myarr[i].length
+                var a = myarr[i][0]
+                var b = myarr[i][1]
+                var c = myarr[i][2]
+                if (myarr[i][2] > 0){
+                    graph.addEdge(a, b, c)
+                }
+                else{
+                    if (a > 0 & b > 0){
+                        mylinjiejuzhen = graph.showGraph()
+                        console.log("下为邻接矩阵：")
+                        console.log(mylinjiejuzhen)
+                    }
+                }
+            }
+        }
+
+        function drawforce(nodes,links){
+            //绘制节点图例
+            console.log("links")
+            console.log(links)
+            
+            var width = window.innerWidth + 300;
+            var height = window.innerHeight - 600;
+            var svg = d3.select("body")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+            var force = d3.layout.force()
+                .nodes(nodes) //指定节点数组
+                .links(links) //指定连线数组
+                .size([width,height]) //指定作用域范围
+                .linkDistance(150) //指定连线长度
+                .charge([-400]); //相互之间的作用力
+
+            force.start();    //开始作用
+
+            //添加连线 
+            var svg_links = svg.selectAll("line")
+            .data(links)
+            .enter()
+            .append("line")
+            .attr("dx",function(d,i){
+            return i*20;
+            })
+            .attr("dy",function(d,i){
+                return i*30;
+            })
+            .style("stroke","#ccc")  //线条的颜色
+            .style("stroke-width",1);//线条的宽度
+
+            var color = d3.scale.category20();
+
+            //添加节点 
+            var svg_nodes = svg.selectAll("circle")
+            .data(nodes)
+            .enter()
+            .append("circle")
+            .attr("r",20)
+            .style("fill",function(d,i){
+                return color(i);
+            })
+            .call(force.drag);  //使得节点能够拖动
+
+            //添加描述节点的文字
+            var svg_texts = svg.selectAll("text")
+            .data(nodes)
+            .enter()
+            .append("text")
+            .style("text-anchor", "middle")//字体居中显示
+            .style('fill', '#FFFFFF')//字体颜色
+            .attr('dy', '.35em')//字体垂直居中显示
+            .attr("font-size", 20)//字体大小
+
+            .text(function(d){
+                return d.name;
+            });
+            force.on("tick", function(){ //对于每一个时间间隔
+                //更新连线坐标
+                svg_links.attr("x1",function(d){ return d.source.x; })
+                    .attr("y1",function(d){ return d.source.y; })
+                    .attr("x2",function(d){ return d.target.x; })
+                    .attr("y2",function(d){ return d.target.y; });
+            
+                //更新节点坐标
+                svg_nodes.attr("cx",function(d){ return d.x; })
+                    .attr("cy",function(d){ return d.y; });
+            
+                //更新文字坐标
+                svg_texts.attr("x", function(d){ return d.x; })
+                .attr("y", function(d){ return d.y; });
+            });
+        }
+        
+    </script>
+
+<body>
+    
+    
+    <button class = "button1" onclick="myshowGraph(myarr)">1.输出邻接矩阵</button>
+    <button class = "button1" onclick="myfindPaths(myarr)">2.输出安全道路</button>
+    <button class = "button1" onclick="drawforce(nodes,links)">3.绘制节点图例</button>
+    
+</body>
+
+</html>
